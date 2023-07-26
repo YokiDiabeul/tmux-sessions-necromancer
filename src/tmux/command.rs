@@ -90,24 +90,3 @@ fn current_state() -> Result<String> {
         .execute()?;
     Ok(from_utf8(&out.stdout)?.to_string())
 }
-
-// fn add_window(session: &str, window_name: &str, path: &str) -> Result<()> {
-//     TmuxCommand::new()
-//         .with_args(&["neww", "-d", "-t", session, "-n", window_name, "-c", path])
-//         .execute()?;
-//     Ok(())
-// }
-//
-// fn new_session(session: &str, window_name: &str, path: &str) -> Result<()> {
-//     TmuxCommand::new()
-//         .with_args(&["new", "-d", "-s", session, "-n", window_name, "-c", path])
-//         .execute()?;
-//     Ok(())
-// }
-//
-// fn session_exists(name: &str) -> Result<bool> {
-//     let out = TmuxCommand::new()
-//         .with_args(&["has", "-t", name, "2>/dev/null"])
-//         .execute()?;
-//     Ok(out.status.success())
-// }
