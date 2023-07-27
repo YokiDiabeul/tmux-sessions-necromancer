@@ -41,8 +41,6 @@ impl FromStr for Layout {
 #[derive(Debug, Clone)]
 pub struct Pane {
     path: String,
-    height: i32,
-    width: i32,
     layout: Layout,
 }
 
@@ -66,19 +64,6 @@ impl Pane {
         TmuxCommand::new().with_args(&["lastp"]).execute()?;
         Ok(())
     }
-
-    fn resize(&self) -> Result<()> {
-        TmuxCommand::new()
-            .with_args(&[
-                "resize-pane",
-                "-y",
-                &self.height.to_string(),
-                "-x",
-                &self.width.to_string(),
-            ])
-            .execute()?;
-        Ok(())
-    }
 }
 
 impl FromStr for Pane {
@@ -86,14 +71,12 @@ impl FromStr for Pane {
 
     fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
         let splitted: Vec<&str> = s.split(PANE_SPLIT).collect();
-        if splitted.len() != 4 {
+        if splitted.len() != 2 {
             return Err(TmuxError::WindowParsing(s.into()));
         }
         Ok(Pane {
             path: splitted[0].to_string(),
-            height: splitted[1].to_string().parse()?,
-            width: splitted[2].to_string().parse()?,
-            layout: splitted[3].parse()?,
+            layout: splitted[1].parse()?,
         })
     }
 }
@@ -119,7 +102,6 @@ impl Window {
                 pane.split()?
             }
         }
-        // tmux splitw -v \; last-pane\; splitw -h \; resize-pane -y 37 -x 137
         Ok(())
     }
 
