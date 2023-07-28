@@ -12,16 +12,15 @@ pub enum TmuxError {
     LayoutParsing(String),
     #[error("Parsing pane failed with {0}")]
     PaneParsing(String),
+    #[error("Unable to open the file {0}")]
+    OpenFile(String),
+    #[error("Unable to write to the file {0}")]
+    WriteFile(String),
 
-    #[error("Command init error")]
+    #[error(transparent)]
     Init(#[from] std::io::Error),
-    #[error("Cannot parse output to string")]
+    #[error(transparent)]
     Parsing(#[from] std::str::Utf8Error),
-    #[error("Connot parse the string to int")]
+    #[error(transparent)]
     IntParsing(#[from] std::num::ParseIntError),
-
-    #[error("Unable to open the file")]
-    OpenFile(#[source] std::io::Error),
-    #[error("Unable to write to the file")]
-    WriteFile(#[source] std::io::Error),
 }

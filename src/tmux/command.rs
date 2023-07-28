@@ -1,7 +1,7 @@
 use std::process::{Command, ExitStatus, Output, Stdio};
 use std::str::from_utf8;
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fs::OpenOptions;
 use std::io::{BufRead, BufReader, Write};
 
@@ -10,6 +10,7 @@ use super::window::Window;
 
 const TMUX_CMD: &str = "tmux";
 const FILE_NAME: &str = "/home/yoki/.tmux-session-rust"; //TODO: use relative path
+const EXCLUDED: [&str; 1] = ["SPOTIFY"];
 
 pub const PANE_SPLIT: &str = " - ";
 pub const WINDOW_SPLIT: char = '\t';
@@ -56,9 +57,9 @@ pub fn save() -> Result<()> {
         .create(true)
         .truncate(true)
         .open(FILE_NAME)
-        .map_err(TmuxError::OpenFile)?
+        .map_err(|_| TmuxError::OpenFile(FILE_NAME.to_string()))?
         .write_all(current_state()?.as_bytes())
-        .map_err(TmuxError::WriteFile)?;
+        .map_err(|_| TmuxError::WriteFile(FILE_NAME.to_string()))?;
     Ok(())
 }
 
@@ -68,15 +69,16 @@ pub fn restore() -> Result<usize> {
     let f = OpenOptions::new()
         .read(true)
         .open(FILE_NAME)
-        .map_err(TmuxError::OpenFile)?;
+        .map_err(|_| TmuxError::OpenFile(FILE_NAME.to_string()))?;
 
     let wins: Vec<Window> = BufReader::new(f)
         .lines()
         .flatten()
         .filter_map(|l| l.parse::<Window>().ok())
+        .filter(|w| !EXCLUDED.contains(&w.name()))
         .collect();
 
-    Ok(merge_windows(wins)
+    Ok(merge_windows_keeping_order(wins)
         .iter()
         .map(|w| w.restore())
         .collect::<Result<Vec<_>>>()?
@@ -84,37 +86,21 @@ pub fn restore() -> Result<usize> {
 }
 
 fn merge_windows_keeping_order(windows: Vec<Window>) -> Vec<Window> {
-    let mut window_map: HashMap<String, Window> = HashMap::new();
+    let mut existing_names: HashSet<String> = HashSet::new();
+    let mut new_list: Vec<Window> = Vec::new();
 
     for window in windows {
-        if let Some(entry) = window_map.get_mut(window.name()) {
+        if existing_names.contains(window.name()) {
+            let entry = new_list.get_mut(existing_names.len() - 1).unwrap();
             for pane in window.panes() {
                 entry.add_pane(pane.clone());
             }
         } else {
-            window_map.insert(window.name().to_string(), window.clone());
+            existing_names.insert(window.name().to_string());
+            new_list.push(window.clone());
         }
     }
-
-    window_map.values().cloned().collect()
-}
-
-// Didn't find any more elegent way of doing it, it created windows and then merge them, instead
-// of creating the right one dirrectly
-fn merge_windows(windows: Vec<Window>) -> Vec<Window> {
-    let mut window_map: HashMap<String, Window> = HashMap::new();
-
-    for window in windows {
-        if let Some(entry) = window_map.get_mut(window.name()) {
-            for pane in window.panes() {
-                entry.add_pane(pane.clone());
-            }
-        } else {
-            window_map.insert(window.name().to_string(), window.clone());
-        }
-    }
-
-    window_map.values().cloned().collect()
+    new_list.clone()
 }
 
 fn current_state() -> Result<String> {

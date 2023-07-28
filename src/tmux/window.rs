@@ -47,7 +47,7 @@ pub struct Pane {
 impl Pane {
     pub fn split(&self) -> Result<()> {
         // self.last_pane()?;
-        self.split_window(self.layout.is_horizontal())?;
+        // self.split_window(self.layout.is_horizontal())?;
         // self.resize()?;
         Ok(())
     }
@@ -72,7 +72,7 @@ impl FromStr for Pane {
     fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
         let splitted: Vec<&str> = s.split(PANE_SPLIT).collect();
         if splitted.len() != 2 {
-            return Err(TmuxError::WindowParsing(s.into()));
+            return Err(TmuxError::PaneParsing(s.into()));
         }
         Ok(Pane {
             path: splitted[0].to_string(),
@@ -121,7 +121,7 @@ impl Window {
         TmuxCommand::new()
             .with_args(&[
                 "neww",
-                // "-d",
+                "-d",
                 "-t",
                 &self.session,
                 "-n",
@@ -137,7 +137,7 @@ impl Window {
         TmuxCommand::new()
             .with_args(&[
                 "new",
-                // "-d",
+                "-d",
                 "-s",
                 &self.session,
                 "-n",
