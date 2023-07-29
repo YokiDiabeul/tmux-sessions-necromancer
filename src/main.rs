@@ -1,12 +1,16 @@
 mod args;
+mod error;
+mod prelude;
 mod tmux;
+
+use prelude::*;
 
 use args::{Action, TmuxSessionArgs};
 use clap::Parser;
 
 use tmux::{restore, save};
 
-fn main() {
+fn main() -> Result<()> {
     match TmuxSessionArgs::parse().action {
         Action::Save => match save() {
             Ok(_) => println!("Session saved"),
@@ -17,4 +21,6 @@ fn main() {
             Err(e) => eprintln!("{e}"),
         },
     }
+
+    Ok(())
 }

@@ -1,7 +1,7 @@
 use std::str::FromStr;
 
 use super::command::{TmuxCommand, PANE_SPLIT, WINDOW_SPLIT};
-use super::error::*;
+use crate::prelude::*;
 
 #[derive(Debug, Clone)]
 struct Layout {
@@ -55,7 +55,8 @@ impl Pane {
     fn split_window(&self, horizontal: bool) -> Result<()> {
         let split = if horizontal { "-h" } else { "-v" };
         TmuxCommand::new()
-            .with_args(&["splitw", split, "-c", &self.path])
+            .with_args(&["splitw", split])
+            .with_args(&["-c", &self.path])
             .execute()?;
         Ok(())
     }
@@ -90,7 +91,7 @@ pub struct Window {
 
 impl Window {
     pub fn restore(&self) -> Result<()> {
-        println!("{self:?}");
+        println!("{self:#?}");
         for (i, pane) in self.panes.iter().enumerate() {
             if i == 0 {
                 if !self.exists()? {
@@ -121,7 +122,7 @@ impl Window {
         TmuxCommand::new()
             .with_args(&[
                 "neww",
-                "-d",
+                // "-d",
                 "-t",
                 &self.session,
                 "-n",

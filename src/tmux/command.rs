@@ -1,51 +1,72 @@
 use std::process::{Command, ExitStatus, Output, Stdio};
 use std::str::from_utf8;
 
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 use std::fs::OpenOptions;
 use std::io::{BufRead, BufReader, Write};
 
-use super::error::*;
 use super::window::Window;
+use crate::prelude::*;
 
 const TMUX_CMD: &str = "tmux";
 const FILE_NAME: &str = "/home/yoki/.tmux-session-rust"; //TODO: use relative path
-const EXCLUDED: [&str; 1] = ["SPOTIFY"];
+const EXCLUDED: [&str; 3] = ["SPOTIFY", "WIKI", "VPN"];
 
 pub const PANE_SPLIT: &str = " - ";
 pub const WINDOW_SPLIT: char = '\t';
 
-pub struct TmuxCommand {
-    args: Vec<String>,
+#[derive(Default)]
+pub struct NoArgs {}
+
+#[derive(Default)]
+pub struct WithArgs(Vec<String>);
+
+#[derive(Default)]
+pub struct TmuxCommand<A> {
+    args: A,
 }
 
-impl TmuxCommand {
+impl TmuxCommand<NoArgs> {
     pub fn new() -> Self {
-        TmuxCommand { args: Vec::new() }
+        Self::default()
     }
 
+    pub fn with_arg(&self, arg: &str) -> TmuxCommand<WithArgs> {
+        TmuxCommand {
+            args: WithArgs(vec![arg.to_string()]),
+        }
+    }
+
+    pub fn with_args(&self, args: &[&str]) -> TmuxCommand<WithArgs> {
+        TmuxCommand {
+            args: WithArgs(args.iter().map(|a| a.to_string()).collect()),
+        }
+    }
+}
+
+impl TmuxCommand<WithArgs> {
     pub fn with_arg(mut self, arg: &str) -> Self {
-        self.args.push(arg.to_string());
+        self.args.0.push(arg.to_string());
         self
     }
 
     pub fn with_args(mut self, args: &[&str]) -> Self {
-        self.args.extend(args.iter().map(|arg| arg.to_string()));
+        self.args.0.extend(args.iter().map(|arg| arg.to_string()));
         self
     }
 
-    pub fn execute(&self) -> Result<Output> {
-        let output = Command::new(TMUX_CMD).args(&self.args).output()?;
+    pub fn execute(self) -> Result<Output> {
+        let output = Command::new(TMUX_CMD).args(&self.args.0).output()?;
         if !output.status.success() {
-            Err(TmuxError::Failed)
-        } else {
-            Ok(output)
+            return Err(TmuxError::Failed);
         }
+
+        Ok(output)
     }
 
-    pub fn status(&self) -> Result<ExitStatus> {
+    pub fn status(self) -> Result<ExitStatus> {
         Ok(Command::new(TMUX_CMD)
-            .args(&self.args)
+            .args(&self.args.0)
             .stderr(Stdio::null())
             .status()?)
     }
@@ -100,11 +121,11 @@ fn merge_windows_keeping_order(windows: Vec<Window>) -> Vec<Window> {
             new_list.push(window.clone());
         }
     }
-    new_list.clone()
+    new_list
 }
 
 fn current_state() -> Result<String> {
-    let state_format = format!("#S{WINDOW_SPLIT}#W{WINDOW_SPLIT}#{{pane_current_path}}{PANE_SPLIT}#{{pane_at_left}}#{{pane_at_top}}#{{pane_at_right}}#{{pane_at_bottom}}");
+    let state_format = f!("#S{WINDOW_SPLIT}#W{WINDOW_SPLIT}#{{pane_current_path}}{PANE_SPLIT}#{{pane_at_left}}#{{pane_at_top}}#{{pane_at_right}}#{{pane_at_bottom}}");
     let out = TmuxCommand::new()
         .with_args(&["lsp", "-a", "-F", &state_format])
         .execute()?;

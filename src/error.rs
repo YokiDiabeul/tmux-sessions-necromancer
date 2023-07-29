@@ -1,11 +1,11 @@
 use thiserror::Error;
 
-pub type Result<T> = std::result::Result<T, TmuxError>;
-
 #[derive(Error, Debug)]
 pub enum TmuxError {
     #[error("Command failed")]
     Failed,
+    #[error("No argument passed to the command")]
+    NoArgs,
     #[error("Parsing window failed with {0}")]
     WindowParsing(String),
     #[error("Parsing layout failed with {0}")]
@@ -18,7 +18,7 @@ pub enum TmuxError {
     WriteFile(String),
 
     #[error(transparent)]
-    Init(#[from] std::io::Error),
+    IO(#[from] std::io::Error),
     #[error(transparent)]
     Parsing(#[from] std::str::Utf8Error),
     #[error(transparent)]
