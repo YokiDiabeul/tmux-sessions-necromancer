@@ -17,7 +17,7 @@ fn main() -> Result<()> {
             Err(e) => eprintln!("{e}"),
         },
         Action::Restore => match restore() {
-            Ok(n) => println!("{n} sessions restored"),
+            Ok(n) => println!("{n} windows restored"),
             Err(e) => eprintln!("{e}"),
         },
     }

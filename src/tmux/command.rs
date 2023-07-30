@@ -60,7 +60,6 @@ impl TmuxCommand<WithArgs> {
         if !output.status.success() {
             return Err(TmuxError::Failed);
         }
-
         Ok(output)
     }
 

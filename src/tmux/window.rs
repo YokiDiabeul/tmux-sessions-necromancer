@@ -15,10 +15,6 @@ impl Layout {
     fn is_horizontal(&self) -> bool {
         !self.left
     }
-
-    fn is_vertical(&self) -> bool {
-        !self.up
-    }
 }
 
 impl FromStr for Layout {
@@ -45,24 +41,18 @@ pub struct Pane {
 }
 
 impl Pane {
-    pub fn split(&self) -> Result<()> {
-        // self.last_pane()?;
-        // self.split_window(self.layout.is_horizontal())?;
-        // self.resize()?;
+    pub fn split(&self, session: &str, window: &str) -> Result<()> {
+        self.split_window(self.layout.is_horizontal(), session, window)?;
         Ok(())
     }
 
-    fn split_window(&self, horizontal: bool) -> Result<()> {
+    fn split_window(&self, horizontal: bool, session: &str, window: &str) -> Result<()> {
         let split = if horizontal { "-h" } else { "-v" };
         TmuxCommand::new()
             .with_args(&["splitw", split])
             .with_args(&["-c", &self.path])
+            .with_args(&["-t", &f!("{session}:{window}")])
             .execute()?;
-        Ok(())
-    }
-
-    fn last_pane(&self) -> Result<()> {
-        TmuxCommand::new().with_args(&["lastp"]).execute()?;
         Ok(())
     }
 }
@@ -91,16 +81,11 @@ pub struct Window {
 
 impl Window {
     pub fn restore(&self) -> Result<()> {
-        println!("{self:#?}");
         for (i, pane) in self.panes.iter().enumerate() {
-            if i == 0 {
-                if !self.exists()? {
-                    self.new_session(pane)?
-                } else {
-                    self.add(pane)?
-                }
-            } else {
-                pane.split()?
+            match (i, pane) {
+                (0, pane) if !self.exists()? => self.new_session(pane)?,
+                (0, pane) => self.add(pane)?,
+                (_, pane) => pane.split(&self.session, &self.name)?,
             }
         }
         Ok(())
@@ -122,7 +107,7 @@ impl Window {
         TmuxCommand::new()
             .with_args(&[
                 "neww",
-                // "-d",
+                "-d",
                 "-t",
                 &self.session,
                 "-n",

@@ -4,8 +4,6 @@ use thiserror::Error;
 pub enum TmuxError {
     #[error("Command failed")]
     Failed,
-    #[error("No argument passed to the command")]
-    NoArgs,
     #[error("Parsing window failed with {0}")]
     WindowParsing(String),
     #[error("Parsing layout failed with {0}")]
