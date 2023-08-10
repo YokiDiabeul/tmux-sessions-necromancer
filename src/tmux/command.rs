@@ -1,3 +1,4 @@
+use std::marker::PhantomData;
 use std::process::{Command, ExitStatus, Output, Stdio};
 use std::str::from_utf8;
 
@@ -6,11 +7,10 @@ use std::fs::OpenOptions;
 use std::io::{BufRead, BufReader, Write};
 
 use super::window::Window;
+use super::{EXCLUDED, FILE_NAME, KNOWN_CMDS};
 use crate::prelude::*;
 
 const TMUX_CMD: &str = "tmux";
-const FILE_NAME: &str = "/home/yoki/.tmux-session-rust"; //TODO: use relative path
-const EXCLUDED: [&str; 3] = ["SPOTIFY", "WIKI", "VPN"];
 
 pub const PANE_SPLIT: &str = " - ";
 pub const WINDOW_SPLIT: char = '\t';
@@ -22,29 +22,38 @@ pub struct NoArgs {}
 pub struct WithArgs(Vec<String>);
 
 #[derive(Default)]
-pub struct TmuxCommand<A> {
+pub struct NoCmd {}
+
+#[derive(Default)]
+pub struct WithCmd;
+
+#[derive(Default)]
+pub struct TmuxCommand<A, B> {
     args: A,
+    cmd: PhantomData<B>,
 }
 
-impl TmuxCommand<NoArgs> {
+impl TmuxCommand<NoArgs, NoCmd> {
     pub fn new() -> Self {
         Self::default()
     }
 
-    pub fn with_arg(&self, arg: &str) -> TmuxCommand<WithArgs> {
+    pub fn with_arg(&self, arg: &str) -> TmuxCommand<WithArgs, NoCmd> {
         TmuxCommand {
             args: WithArgs(vec![arg.to_string()]),
+            cmd: PhantomData,
         }
     }
 
-    pub fn with_args(&self, args: &[&str]) -> TmuxCommand<WithArgs> {
+    pub fn with_args(&self, args: &[&str]) -> TmuxCommand<WithArgs, NoCmd> {
         TmuxCommand {
             args: WithArgs(args.iter().map(|a| a.to_string()).collect()),
+            cmd: PhantomData,
         }
     }
 }
 
-impl TmuxCommand<WithArgs> {
+impl TmuxCommand<WithArgs, NoCmd> {
     pub fn with_arg(mut self, arg: &str) -> Self {
         self.args.0.push(arg.to_string());
         self
@@ -55,6 +64,18 @@ impl TmuxCommand<WithArgs> {
         self
     }
 
+    pub fn with_cmd(mut self, cmd: &str) -> TmuxCommand<WithArgs, WithCmd> {
+        if KNOWN_CMDS.contains(&cmd) {
+            self.args.0.push(cmd.to_string());
+        }
+        TmuxCommand {
+            args: self.args,
+            cmd: PhantomData,
+        }
+    }
+}
+
+impl<B> TmuxCommand<WithArgs, B> {
     pub fn execute(self) -> Result<Output> {
         let output = Command::new(TMUX_CMD).args(&self.args.0).output()?;
         if !output.status.success() {
@@ -110,13 +131,13 @@ fn merge_windows_keeping_order(windows: Vec<Window>) -> Vec<Window> {
     let mut new_list: Vec<Window> = Vec::new();
 
     for window in windows {
-        if existing_names.contains(window.name()) {
+        if existing_names.contains(&window.id()) {
             let entry = new_list.get_mut(existing_names.len() - 1).unwrap();
             for pane in window.panes() {
                 entry.add_pane(pane.clone());
             }
         } else {
-            existing_names.insert(window.name().to_string());
+            existing_names.insert(window.id());
             new_list.push(window.clone());
         }
     }
@@ -124,7 +145,7 @@ fn merge_windows_keeping_order(windows: Vec<Window>) -> Vec<Window> {
 }
 
 fn current_state() -> Result<String> {
-    let state_format = f!("#S{WINDOW_SPLIT}#W{WINDOW_SPLIT}#{{pane_current_path}}{PANE_SPLIT}#{{pane_at_left}}#{{pane_at_top}}#{{pane_at_right}}#{{pane_at_bottom}}");
+    let state_format = f!("#S{WINDOW_SPLIT}#W{WINDOW_SPLIT}#{{pane_current_path}}{PANE_SPLIT}#{{pane_current_command}}{PANE_SPLIT}#{{pane_at_left}}#{{pane_at_top}}#{{pane_at_right}}#{{pane_at_bottom}}");
     let out = TmuxCommand::new()
         .with_args(&["lsp", "-a", "-F", &state_format])
         .execute()?;

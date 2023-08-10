@@ -37,6 +37,7 @@ impl FromStr for Layout {
 #[derive(Debug, Clone)]
 pub struct Pane {
     path: String,
+    cmd: String,
     layout: Layout,
 }
 
@@ -52,6 +53,7 @@ impl Pane {
             .with_args(&["splitw", split])
             .with_args(&["-c", &self.path])
             .with_args(&["-t", &f!("{session}:{window}")])
+            .with_cmd(&self.cmd)
             .execute()?;
         Ok(())
     }
@@ -62,12 +64,13 @@ impl FromStr for Pane {
 
     fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
         let splitted: Vec<&str> = s.split(PANE_SPLIT).collect();
-        if splitted.len() != 2 {
+        if splitted.len() != 3 {
             return Err(TmuxError::PaneParsing(s.into()));
         }
         Ok(Pane {
             path: splitted[0].to_string(),
-            layout: splitted[1].parse()?,
+            cmd: splitted[1].to_string(),
+            layout: splitted[2].parse()?,
         })
     }
 }
@@ -81,6 +84,7 @@ pub struct Window {
 
 impl Window {
     pub fn restore(&self) -> Result<()> {
+        println!("{self:#?}");
         for (i, pane) in self.panes.iter().enumerate() {
             match (i, pane) {
                 (0, pane) if !self.exists()? => self.new_session(pane)?,
@@ -89,6 +93,10 @@ impl Window {
             }
         }
         Ok(())
+    }
+
+    pub fn id(&self) -> String {
+        f!("{}:{}", self.session, self.name)
     }
 
     pub fn name(&self) -> &str {
@@ -105,32 +113,24 @@ impl Window {
 
     fn add(&self, pane: &Pane) -> Result<()> {
         TmuxCommand::new()
-            .with_args(&[
-                "neww",
-                "-d",
-                "-t",
-                &self.session,
-                "-n",
-                &self.name,
-                "-c",
-                &pane.path,
-            ])
+            .with_arg("neww")
+            .with_arg("-d")
+            .with_args(&["-t", &self.session])
+            .with_args(&["-n", &self.name])
+            .with_args(&["-c", &pane.path])
+            .with_cmd(&pane.cmd)
             .execute()?;
         Ok(())
     }
 
     fn new_session(&self, pane: &Pane) -> Result<()> {
         TmuxCommand::new()
-            .with_args(&[
-                "new",
-                "-d",
-                "-s",
-                &self.session,
-                "-n",
-                &self.name,
-                "-c",
-                &pane.path,
-            ])
+            .with_arg("new")
+            .with_arg("-d")
+            .with_args(&["-s", &self.session])
+            .with_args(&["-n", &self.name])
+            .with_args(&["-c", &pane.path])
+            .with_cmd(&pane.cmd)
             .execute()?;
         Ok(())
     }
