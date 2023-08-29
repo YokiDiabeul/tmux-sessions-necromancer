@@ -93,24 +93,26 @@ impl<B> TmuxCommand<WithArgs, B> {
 }
 
 pub fn save() -> Result<()> {
+    let filename: String = f!("{}/{FILE_NAME}", std::env::var("HOME").unwrap());
     OpenOptions::new()
         .write(true)
         .create(true)
         .truncate(true)
-        .open(FILE_NAME)
-        .map_err(|_| TmuxError::OpenFile(FILE_NAME.to_string()))?
+        .open(&filename)
+        .map_err(|_| TmuxError::OpenFile(filename.clone()))?
         .write_all(current_state()?.as_bytes())
-        .map_err(|_| TmuxError::WriteFile(FILE_NAME.to_string()))?;
+        .map_err(|_| TmuxError::WriteFile(filename.clone()))?;
     Ok(())
 }
 
 pub fn restore() -> Result<usize> {
     TmuxCommand::new().with_arg("start").execute()?;
 
+    let filename: String = f!("{}/{FILE_NAME}", std::env::var("HOME").unwrap());
     let f = OpenOptions::new()
         .read(true)
-        .open(FILE_NAME)
-        .map_err(|_| TmuxError::OpenFile(FILE_NAME.to_string()))?;
+        .open(&filename)
+        .map_err(|_| TmuxError::OpenFile(filename))?;
 
     let wins: Vec<Window> = BufReader::new(f)
         .lines()
@@ -145,7 +147,7 @@ fn merge_windows_keeping_order(windows: Vec<Window>) -> Vec<Window> {
 }
 
 fn current_state() -> Result<String> {
-    let state_format = f!("#S{WINDOW_SPLIT}#W{WINDOW_SPLIT}#{{pane_current_path}}{PANE_SPLIT}#{{pane_current_command}}{PANE_SPLIT}#{{pane_at_left}}#{{pane_at_top}}#{{pane_at_right}}#{{pane_at_bottom}}");
+    let state_format = f!("#S{WINDOW_SPLIT}#W{WINDOW_SPLIT}#{{pane_current_path}}{PANE_SPLIT}#{{pane_current_command}}{PANE_SPLIT}#{{pane_height}}{PANE_SPLIT}#{{pane_width}}{PANE_SPLIT}#{{pane_at_left}}");
     let out = TmuxCommand::new()
         .with_args(&["lsp", "-a", "-F", &state_format])
         .execute()?;

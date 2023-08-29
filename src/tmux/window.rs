@@ -4,46 +4,18 @@ use super::command::{TmuxCommand, PANE_SPLIT, WINDOW_SPLIT};
 use crate::prelude::*;
 
 #[derive(Debug, Clone)]
-struct Layout {
-    up: bool,
-    left: bool,
-    right: bool,
-    down: bool,
-}
-
-impl Layout {
-    fn is_horizontal(&self) -> bool {
-        !self.left
-    }
-}
-
-impl FromStr for Layout {
-    type Err = TmuxError;
-
-    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
-        let layout: Vec<char> = s.chars().collect();
-        if layout.len() != 4 {
-            return Err(TmuxError::LayoutParsing(s.into()));
-        }
-        Ok(Layout {
-            left: layout[0] as u8 == 49,
-            up: layout[1] as u8 == 49,
-            right: layout[2] as u8 == 49,
-            down: layout[3] as u8 == 49,
-        })
-    }
-}
-
-#[derive(Debug, Clone)]
 pub struct Pane {
     path: String,
     cmd: String,
-    layout: Layout,
+    height: i32,
+    width: i32,
+    horizontal: bool,
 }
 
 impl Pane {
     pub fn split(&self, session: &str, window: &str) -> Result<()> {
-        self.split_window(self.layout.is_horizontal(), session, window)?;
+        self.split_window(self.horizontal, session, window)?;
+        self.resize()?;
         Ok(())
     }
 
@@ -57,6 +29,15 @@ impl Pane {
             .execute()?;
         Ok(())
     }
+
+    fn resize(&self) -> Result<()> {
+        TmuxCommand::new()
+            .with_arg("resize-pane")
+            .with_args(&["-y", &self.height.to_string()])
+            .with_args(&["-x", &self.width.to_string()])
+            .execute()?;
+        Ok(())
+    }
 }
 
 impl FromStr for Pane {
@@ -64,13 +45,16 @@ impl FromStr for Pane {
 
     fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
         let splitted: Vec<&str> = s.split(PANE_SPLIT).collect();
-        if splitted.len() != 3 {
+        if splitted.len() != 5 {
             return Err(TmuxError::PaneParsing(s.into()));
         }
+
         Ok(Pane {
             path: splitted[0].to_string(),
             cmd: splitted[1].to_string(),
-            layout: splitted[2].parse()?,
+            height: splitted[2].parse()?,
+            width: splitted[3].parse()?,
+            horizontal: splitted[4].parse::<u8>()? != 1,
         })
     }
 }
