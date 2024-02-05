@@ -1,4 +1,4 @@
-//! Create prelude
+//! Crate prelude
 
 pub use crate::error::TmuxError;
 
