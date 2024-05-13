@@ -5,3 +5,5 @@ Todo:
 * [ ] Add the list command to list the existing sessions
 * [ ] Add the start command to open a saved sessions (restore but with a name)
 * [ ] Add the save with name command 
+* [ ] Save and exit everything
+* [X] Make a mirror repo in github
