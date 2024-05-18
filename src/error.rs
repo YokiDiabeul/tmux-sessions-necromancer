@@ -2,8 +2,8 @@ use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub enum TmuxError {
-    #[error("Command failed")]
-    Failed,
+    #[error("Command failed: {0}")]
+    Failed(String),
 
     #[error("Parsing window failed with {0}")]
     WindowParsing(String),

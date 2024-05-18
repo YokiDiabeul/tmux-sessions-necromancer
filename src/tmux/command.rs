@@ -79,7 +79,7 @@ impl<B> TmuxCommand<WithArgs, B> {
     pub fn execute(self) -> Result<Output> {
         let output = Command::new(TMUX_CMD).args(&self.args.0).output()?;
         if !output.status.success() {
-            return Err(TmuxError::Failed);
+            return Err(TmuxError::Failed(self.args.0.join(" ")));
         }
         Ok(output)
     }

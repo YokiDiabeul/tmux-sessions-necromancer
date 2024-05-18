@@ -6,4 +6,4 @@ Todo:
 * [ ] Add the start command to open a saved sessions (restore but with a name)
 * [ ] Add the save with name command 
 * [ ] Save and exit everything
-* [X] Make a mirror repo in github
+* [ ] Make a mirror repo in github
